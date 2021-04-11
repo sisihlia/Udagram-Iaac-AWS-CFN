@@ -4,6 +4,38 @@ Parameters:
         Type: String
     
 Resources:
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: AmazonS3FullAccess
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - arn:aws:s3:::udagrams3bucket
+      Roles:
+        - Ref: UdacityS3ReadOnlyEC2
+  UdacityS3ReadOnlyEC2:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+  ProfileWithRolesForOurApp:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      Roles:
+        - !Ref UdacityS3ReadOnlyEC2  
   LBSecGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -33,6 +65,10 @@ Resources:
         FromPort: 80
         ToPort: 80
         CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
       - IpProtocol: tcp
         FromPort: 0
@@ -48,12 +84,13 @@ Resources:
           sudo apt-get install apache2 -y
           sudo systemctl start apache2.service
           cd /var/www/html
-          echo "It is working" > index.html
-          #aws s3 cp s3://udagrams3bucket/udagram-s3-index.html .
-          #systemctl restart apache2.service
-      ImageId: ami-05d72852800cbf29e
-      #IamInstanceProfile: !Ref ProfileWithRolesForOurApp
-      KeyName: myhello-ohio
+          #echo "It is working" > index.html   
+          aws s3 cp s3://udagrams3bucket/index.zip .
+          unzip -o index.zip
+          sudo service apache2 restart    
+      ImageId: ami-01e7ca2ef94a0ae86
+      IamInstanceProfile: !Ref ProfileWithRolesForOurApp
+      KeyName: udagramprikey
       SecurityGroups:
       - Ref: WebServerSecGroup    
       InstanceType: t3.medium
