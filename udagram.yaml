@@ -7,7 +7,7 @@ Resources:
   RolePolicies:
     Type: AWS::IAM::Policy
     Properties: 
-      PolicyName: AmazonS3FullAccess
+      PolicyName: AmazonS3ReadOnlyAccess
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -15,8 +15,8 @@ Resources:
             Action:
               - s3:Get*
               - s3:List*
-            Resource:
-              - arn:aws:s3:::udagrams3bucket
+            Resource: '*'
+              #- arn:aws:s3:::udagrams3bucket
       Roles:
         - Ref: UdacityS3ReadOnlyEC2
   UdacityS3ReadOnlyEC2:
@@ -31,6 +31,11 @@ Resources:
                 - ec2.amazonaws.com
             Action:
               - 'sts:AssumeRole'
+      Path: /
+      RoleName: UdacityS3ReadOnlyEC2
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  
   ProfileWithRolesForOurApp:
     Type: AWS::IAM::InstanceProfile
     Properties: 
@@ -81,13 +86,14 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           sudo apt-get update -y
+          sudo apt-get install unzip awscli -y
           sudo apt-get install apache2 -y
           sudo systemctl start apache2.service
           cd /var/www/html
           #echo "It is working" > index.html   
-          aws s3 cp s3://udagrams3bucket/index.zip .
-          unzip -o index.zip
-          sudo service apache2 restart    
+          sudo aws s3 cp s3://udagrams3bucket/index.zip .
+          sudo unzip -o index.zip
+          sudo systemctl restart apache2.service
       ImageId: ami-01e7ca2ef94a0ae86
       IamInstanceProfile: !Ref ProfileWithRolesForOurApp
       KeyName: udagramprikey
